@@ -14,11 +14,7 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-enum Role{
-  TENANT
-  LANDLORD
-  ADMIN
-}
+
 
 model user{
   id               String @id @default(uuid()) @map("_id")
@@ -30,4 +26,55 @@ model user{
   refreshToken     String?
   createAt         DateTime @default(now())
 
+
+  listings         listing[]   @relation("landlordListings")
+
 }
+enum Role{
+  TENANT
+  LANDLORD
+  ADMIN
+}
+
+model listing {
+  id               String @id @default(uuid()) @map("_id")
+  title            String
+  description      String
+  price            Float
+  currency         String @default("XAF")
+  propertyType     PropertyType
+  bedrooms         Int
+  bathrooms        Int
+  areaSqm          Float
+  amenities        String[]
+  images           String[]
+  loction          Location
+  status           ListingStatus   @default(ACTIVE)
+  landlordId       String    
+  landlord         user @relation("landlordListings", fields: [landlordId] , references: [id])
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+  }
+
+  type Location {
+    address      String
+    city         String
+    region       String
+    country      String
+    lat          Float?
+    lng          Float?
+  }
+
+  enum  PropertyType {
+    APARTMENT
+    STUDIO
+    HOUSE
+    ROOM
+    DUPLEX
+  }
+
+  enum ListingStatus {
+    ACTIVE
+    RENTED
+    INACTIVE
+  }
