@@ -28,6 +28,8 @@ model user{
 
 
   listings         listing[]   @relation("landlordListings")
+  favorites        favorite[]
+  inquiries        inquiry[]  @relation("tenantInquiries")
 
 }
 enum Role{
@@ -51,9 +53,12 @@ model listing {
   location         Location
   status           ListingStatus   @default(ACTIVE)
   landlordId       String    
-  landlord         user @relation("landlordListings", fields: [landlordId] , references: [id])
+  landlord         user @relation("landlordListings", fields: [landlordId] , references: [id], onDelete:Cascade)
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
+
+  favorites        favorite[]
+  inquiries        inquiry[]
   }
 
   type Location {
@@ -77,4 +82,34 @@ model listing {
     ACTIVE
     RENTED
     INACTIVE
+  }
+
+  model favorite{
+    id          String @id @default(uuid()) @map("_id")
+    userId      String
+    listingId   String 
+    user        user @relation(fields: [userId], references: [id], onDelete:Cascade)
+    listing     listing @relation(fields: [listingId], references: [id], onDelete:Cascade)
+    creatAt     DateTime @default(now())
+
+    @@unique([userId, listingId])
+  }
+
+  model inquiry{
+    id          String @id @default(uuid()) @map("_id")
+    tenantId    String
+    listingId   String
+    message     String
+    status      inquiryStatus  @default(PENDING)
+    tenant      user  @relation("tenantInquiries", fields: [tenantId] , references: [id], onDelete:Cascade)
+    listing     listing  @relation(fields: [listingId], references: [id], onDelete:Cascade)
+    creatAt     DateTime   @default(now())
+
+
+  }
+
+  enum    inquiryStatus{
+    PENDING
+    RESPONDED
+    CLOSED
   }
