@@ -48,7 +48,7 @@ model listing {
   areaSqm          Float
   amenities        String[]
   images           String[]
-  loction          Location
+  location         Location
   status           ListingStatus   @default(ACTIVE)
   landlordId       String    
   landlord         user @relation("landlordListings", fields: [landlordId] , references: [id])

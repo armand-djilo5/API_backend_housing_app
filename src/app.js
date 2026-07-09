@@ -1,7 +1,7 @@
 import express from 'express'
 import rateLimit from 'express-rate-limit'
 import auth_router from './routes/User.routes.js'
-
+import listing_router from './routes/listings.routes.js'
 
 const app = express()
 
@@ -14,6 +14,7 @@ const limiter = rateLimit({
 app.use(express.json())
 app.use(limiter)
 app.use('/api/auth', auth_router)
+app.use('/api', listing_router)
 
 
 
