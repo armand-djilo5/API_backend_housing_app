@@ -3,6 +3,7 @@ import { HttpCode } from '../core/constants/index.js'
 import { ZodError } from 'zod'
 import { listingQuerySchema, createListingSchema, updateListingSchema } from '../validators/listings.validators.js'
 
+
 const listingsControllers = {
   createListing: async (req, res) => {
     try {

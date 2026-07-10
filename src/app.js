@@ -2,6 +2,7 @@ import express from 'express'
 import rateLimit from 'express-rate-limit'
 import auth_router from './routes/User.routes.js'
 import listing_router from './routes/listings.routes.js'
+import favorite_router from './routes/favorites.routes.js'
 
 const app = express()
 
@@ -15,6 +16,7 @@ app.use(express.json())
 app.use(limiter)
 app.use('/api/auth', auth_router)
 app.use('/api', listing_router)
+app.use('/api', favorite_router)
 
 
 

@@ -3,6 +3,8 @@ import { HttpCode } from '../core/constants/index.js'
 import { v4 as uuidv4 } from 'uuid'
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcrypt'
+import { ZodError } from 'zod'
+import {registerSchema, loginSchema} from '../validators/user.validators.js'
 // import { user } from 'pg/lib/defaults'
 // import { id } from 'zod/locales'
 // import { sign } from 'node:crypto'
@@ -17,7 +19,7 @@ const generateAccessToken = (user) => {
         role: user.role
     },
         process.env.JWT_ACCESS_SECRET,
-        { expiresIn: '45m'} 
+        { expiresIn: '45m' }
     )
 }
 
@@ -33,22 +35,25 @@ const generateRefreshToken = (user) => {
 
 const authController = {
 
-    signup: async ( req, res ) => {
+    signup: async (req, res) => {
         try {
-           const { email, password, name, role, phone } = req.body 
 
-           if ( !email || !password || !name || !phone) {
-            return res.status(HttpCode.BAD_REQUEST).json({message: "Fill all the informations needed"})
-           }
+            const data = registerSchema.parse(req.body)
 
-           const emailExist = await prisma.user.findUnique({
-            where: {
-                email
+            const { email, password, name, role, phone } = req.body
+
+            if (!email || !password || !name || !phone) {
+                return res.status(HttpCode.BAD_REQUEST).json({ message: "Fill all the informations needed" })
             }
-           })
-           if (emailExist) {
-            return res.status(HttpCode.BAD_REQUEST).json({message: "Email already exists"})
-           }
+
+            const emailExist = await prisma.user.findUnique({
+                where: {
+                    email
+                }
+            })
+            if (emailExist) {
+                return res.status(HttpCode.BAD_REQUEST).json({ message: "Email already exists" })
+            }
 
             const hashPassword = await bcrypt.hash(password, 10)
             const newUser = await prisma.user.create({
@@ -73,15 +78,21 @@ const authController = {
                 }
             })
         } catch (error) {
-            return res.status(HttpCode.INTERNAL_SERVER_ERROR).json({message: "SERVER ERROR"})
+            if (error instanceof ZodError) {
+                return res.status(HttpCode.BAD_REQUEST).json({ message: error.errors })
+            }
+
+            return res.status(HttpCode.INTERNAL_SERVER_ERROR).json({ message: "SERVER ERROR" })
         }
     },
 
     login: async (req, res) => {
         try {
-            const { email , password } = req.body
-            if ( !email || !password) {
-                return res.status(HttpCode.BAD_REQUEST).json({message: "email or password recquired"})
+
+            const data = loginSchema.parse(req.body)
+            const { email, password } = req.body
+            if (!email || !password) {
+                return res.status(HttpCode.BAD_REQUEST).json({ message: "email or password recquired" })
             }
 
             const user = await prisma.user.findUnique({
@@ -89,11 +100,11 @@ const authController = {
             })
 
             if (!user) {
-                return res.status(HttpCode.NOT_FOUND).json({message: "User not found"})
+                return res.status(HttpCode.NOT_FOUND).json({ message: "User not found" })
             }
 
             const verifyPassword = await bcrypt.compare(password, user.password)
-              if (!verifyPassword) {
+            if (!verifyPassword) {
                 return res.status(HttpCode.NOT_FOUND).json({ message: 'Invalid password' })
             }
 
@@ -102,77 +113,81 @@ const authController = {
 
             await prisma.user.update({
                 where: { id: user.id },
-                data: { refreshToken}
+                data: { refreshToken }
             })
 
             return res.status(HttpCode.OK).json({
                 message: 'Connection succeeded',
                 token: accesToken,
                 refreshToken: refreshToken,
-                user: { id: user.id, email: user.email, role: user.role, phone: user.phone}
+                user: { id: user.id, email: user.email, role: user.role, phone: user.phone }
             })
-        } catch (error) {
-            return res.status(HttpCode.INTERNAL_SERVER_ERROR).json({message: 'Error during creation of user'})
+           } catch (error) {
+            if (error instanceof ZodError) {
+                return res.status(HttpCode.BAD_REQUEST).json({ message: error.errors })
+            }
+
+            return res.status(HttpCode.INTERNAL_SERVER_ERROR).json({ message: "SERVER ERROR" })
         }
     },
 
     logout: async (req, res) => {
         try {
-            const {refreshToken} = req.body
+            const { refreshToken } = req.body
             const user = await prisma.user.findFirst({
-                where: {refreshToken}
+                where: { refreshToken }
             })
 
             if (!user) {
-                return res.status(HttpCode.NOT_FOUND).json({message: 'User not found'})
+                return res.status(HttpCode.NOT_FOUND).json({ message: 'User not found' })
             }
 
             await prisma.user.update({
-                where: {id: user.id},
-                data: {refreshToken: null}
+                where: { id: user.id },
+                data: { refreshToken: null }
             })
-            return res.status(HttpCode.OK).json({message: 'Logout succeeded'})
+            return res.status(HttpCode.OK).json({ message: 'Logout succeeded' })
         } catch (error) {
-            return res.status(HttpCode.INTERNAL_SERVER_ERROR).json({error: 'Error during logging out'})
+            return res.status(HttpCode.INTERNAL_SERVER_ERROR).json({ error: 'Error during logging out' })
         }
     },
-     refreshToken: async(req, res) => {
+    refreshToken: async (req, res) => {
         try {
-            const {refreshToken} = req.body
+            const { refreshToken } = req.body
             if (!refreshToken) {
-                return res.status(HttpCode.BAD_REQUEST).json({ message: 'Enter your refresh token'})
+                return res.status(HttpCode.BAD_REQUEST).json({ message: 'Enter your refresh token' })
             }
-            
+
             const decoded = jwt.verify(refreshToken, process.env.JWT_REFRESH_SECRET)
             const user = await prisma.user.findUnique({
-                where: { id: decoded.id}
+                where: { id: decoded.id }
             })
 
             if (!user || user.refreshToken !== refreshToken) {
-                return res.status(HttpCode.UNAUTHORIZED).json({ message: 'Refresh token invalide or expired'})
+                return res.status(HttpCode.UNAUTHORIZED).json({ message: 'Refresh token invalide or expired' })
             }
 
             const newAccessToken = generateAccessToken(user)
 
-            return res.status(HttpCode.OK).json({accesToken: newAccessToken})
+            return res.status(HttpCode.OK).json({ accesToken: newAccessToken })
         } catch (error) {
-            return res.status(HttpCode.INTERNAL_SERVER_ERROR).json({ error: 'Refresh token invalid'})
+            return res.status(HttpCode.INTERNAL_SERVER_ERROR).json({ error: 'Refresh token invalid' })
         }
     },
     getUser: async (req, res) => {
         try {
             const users = await prisma.user.findMany({
-                orderBy: { createAt : 'desc'}
+                orderBy: { createAt: 'desc' }
             })
             if (users.length === 0) {
-                return res.status(HttpCode.NOT_FOUND).json({message: "User not found"})
+                return res.status(HttpCode.NOT_FOUND).json({ message: "User not found" })
             }
             return res.status(HttpCode.OK).json(users)
         } catch (error) {
-            return res.status(HttpCode.INTERNAL_SERVER_ERROR).json({message: "SERVER ERROR"})
+            return res.status(HttpCode.INTERNAL_SERVER_ERROR).json({ message: "SERVER ERROR" })
         }
     },
-        getUserById: async (req, res) => {
+    getUserById: async (req, res) => {
         try {
             const { id } = req.params
 
