@@ -24,11 +24,29 @@ const inquiryControllers = {
                     tenantId: req.user.userId
                 }
             })
-        } catch( error instanceof ZodError)
-            return res.status(HttpCode.INTERNAL_SERVER_ERROR).json({message: "SERVER ERROR"})
+        } catch (error) {
+            if (error instanceof ZodError) {
+                return res.status(HttpCode.BAD_REQUEST).json({ message: error.errors })
+            }
 
+            return res.status(HttpCode.INTERNAL_SERVER_ERROR).json({ message: 'SERVER ERROR' })
         }
 
 
+    },
+
+    updateInquiry: async ( req, res)=> {
+        const data = UpdateInquirySchema.parse(req.body)
+
+        const listing= await prisma.listing.findUnique({
+            where: {id: listingId}
+        })
+        if(!listing){
+            return res.status(HttpCode.NOT_FOUND).json({message: "Listing not found"})
+        }
+
+        const u
     }
+
+
 }
