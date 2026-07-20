@@ -4,7 +4,8 @@ import { v4 as uuidv4 } from 'uuid'
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcrypt'
 import { ZodError } from 'zod'
-import {registerSchema, loginSchema} from '../validators/user.validators.js'
+import { registerSchema, loginSchema } from '../validators/user.validators.js'
+import { emailService } from '../services/emailServices.js'
 // import { user } from 'pg/lib/defaults'
 // import { id } from 'zod/locales'
 // import { sign } from 'node:crypto'
@@ -67,7 +68,13 @@ const authController = {
                 }
             })
 
-            return res.status(HttpCode.OK).json({
+            try {
+                await emailService.sendWelcome(email, name)
+            } catch (mailError) {
+                console.error('Welcome email failed:', mailError)
+            }
+
+            return res.status(HttpCode.CREATED).json({
                 message: "User created successfully",
                 user: {
                     id: newUser.id,
@@ -122,7 +129,7 @@ const authController = {
                 refreshToken: refreshToken,
                 user: { id: user.id, email: user.email, role: user.role, phone: user.phone }
             })
-           } catch (error) {
+        } catch (error) {
             if (error instanceof ZodError) {
                 return res.status(HttpCode.BAD_REQUEST).json({ message: error.errors })
             }
