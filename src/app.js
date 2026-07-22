@@ -1,4 +1,5 @@
 import express from 'express'
+import cors from 'cors'
 import rateLimit from 'express-rate-limit'
 import auth_router from './routes/User.routes.js'
 import listing_router from './routes/listings.routes.js'
@@ -13,6 +14,7 @@ const limiter = rateLimit({
     message: "Too many requests, please try again later "
 })
 
+app.use(cors())
 app.use(express.json())
 app.use(limiter)
 app.use('/api/auth', auth_router)

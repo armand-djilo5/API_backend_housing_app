@@ -29,9 +29,15 @@ const listingsControllers = {
   getListings: async (req, res) => {
     try {
       const query = listingQuerySchema.parse(req.query)
-      const { city, propertyType, minPrice, maxPrice, bedrooms, page, limit } = query
+      const { city, propertyType, minPrice, maxPrice, bedrooms, landlordId, status, page, limit } = query
 
-      const where = { status: 'ACTIVE' }
+      const where = {}
+      if (landlordId) {
+        where.landlordId = landlordId
+        if (status) where.status = status
+      } else {
+        where.status = status || 'ACTIVE'
+      }
       if (city) where.location = { is: { city: { equals: city, mode: 'insensitive' } } }
       if (propertyType) where.propertyType = propertyType
       if (bedrooms !== undefined) where.bedrooms = bedrooms

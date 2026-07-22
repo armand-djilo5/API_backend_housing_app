@@ -6,6 +6,8 @@ export const listingQuerySchema = z.object({
   minPrice: z.coerce.number().nonnegative().optional(),
   maxPrice: z.coerce.number().nonnegative().optional(),
   bedrooms: z.coerce.number().int().nonnegative().optional(),
+  landlordId: z.string().optional(),
+  status: z.enum(['ACTIVE', 'RENTED', 'INACTIVE']).optional(),
   page: z.coerce.number().int().positive().default(1),
   limit: z.coerce.number().int().positive().default(10),
 })
